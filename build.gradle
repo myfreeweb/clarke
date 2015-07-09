@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+    id 'antlr'
+    id 'com.github.johnrengelman.shadow' version '1.2.1'
+}
+
+group 'technology.unrelenting'
+version '1.0-SNAPSHOT'
+
+// sourceCompatibility = 1.6
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'me.qmx.jitescript:jitescript:0.3.0'
+    antlr 'org.antlr:antlr4:4.5'
+    testCompile 'junit:junit:4.11'
+}
+
+generateGrammarSource {
+    arguments += ["-long-messages", "-package", "technology.unrelenting.clarke"]
+    outputDirectory = new File("gen/java/main/technology/unrelenting/clarke")
+}
+
+compileJava {
+    source "gen/java/main"
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.5'
+}
