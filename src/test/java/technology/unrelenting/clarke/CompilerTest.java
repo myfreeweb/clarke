@@ -32,4 +32,9 @@ public class CompilerTest {
         assertEquals(0.0025, testClass.getMethod("ar", int.class).invoke(null, 10));
     }
 
+    @Test public void testStaticCalls() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Class testClass = eval("testHello :: -> java.lang.String = hello; hello :: -> java.lang.String = \"Hello\";");
+        assertEquals("Hello", testClass.getMethod("testHello").invoke(null));
+    }
+
 }
