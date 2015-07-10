@@ -10,7 +10,7 @@ definition : ID ( ( '::' | '∷' ) typeSignature )? '=' expr+ ';' ;
 
 typeSignature : argTypes ( ( '->' | '→') returnType )? ;
 
-argTypes : ID* ;
+argTypes : ID*? ;
 
 returnType : ID ;
 
@@ -21,15 +21,7 @@ PrimitiveOperation : '+' | '-' | '*' | '/' ;
 
 literal : IntLiteral | LongLiteral | FloatLiteral | DoubleLiteral | StringLiteral ;
 
-StringLiteral : '"' StringChar* '"' ;
-
-fragment StringChar
-    : ~["\\]
-    | '\\' EscapeSequence ;
-
-EscapeSequence : AsciiEscapeSequence ;
-
-AsciiEscapeSequence : ['"\\bfnrtv] ;
+StringLiteral : '"' ( '\\"' | . )*? '"' ;
 
 IntLiteral : NumericLiteral ;
 
