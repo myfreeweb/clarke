@@ -7,10 +7,14 @@ import java.util.Stack;
 
 public class PrimitiveOperations {
 
+    public static boolean isTwoSlot(Class klass) {
+        return klass == long.class || klass == double.class;
+    }
+
     public static void compileSwap(CodeBlock block, Class upper, Class lower) {
         // https://stackoverflow.com/questions/11340330/java-bytecode-swap-for-double-and-long-values
-        boolean upperTwoSlots = upper == long.class || upper == double.class;
-        boolean lowerTwoSlots = lower == long.class || lower == double.class;
+        boolean upperTwoSlots = isTwoSlot(upper);
+        boolean lowerTwoSlots = isTwoSlot(lower);
         if (!upperTwoSlots && !lowerTwoSlots) {
             block.swap();
         } else if (!upperTwoSlots && lowerTwoSlots) {
@@ -23,6 +27,32 @@ public class PrimitiveOperations {
             block.dup2_x2();
             block.pop2();
         }
+    }
+
+    public static void compileSwap(CodeBlock block, Stack<Class> classStack) {
+        Class upper = classStack.pop();
+        Class lower = classStack.pop();
+        compileSwap(block, upper, lower);
+        classStack.push(upper);
+        classStack.push(lower);
+    }
+
+    public static void compileDup(CodeBlock block, Stack<Class> classStack) {
+        Class upper = classStack.pop();
+        if (isTwoSlot(upper))
+            block.dup2();
+        else
+            block.dup();
+        classStack.push(upper);
+        classStack.push(upper);
+    }
+
+    public static void compilePop(CodeBlock block, Stack<Class> classStack) {
+        Class upper = classStack.pop();
+        if (isTwoSlot(upper))
+            block.pop2();
+        else
+            block.pop();
     }
 
     public static Class castNumericTypes(CodeBlock block, Stack<Class> classStack) {
@@ -95,8 +125,7 @@ public class PrimitiveOperations {
         return null;
     }
 
-    public static void compilePrimitiveOperation(CodeBlock block, Stack<Class> classStack, TerminalNode operation) {
-        String op = operation.getSymbol().getText();
+    public static void compileNumericOperation(CodeBlock block, Stack<Class> classStack, String op) {
         Class operandsClass = castNumericTypes(block, classStack);
 
         if (op.equals("+")) {
@@ -135,6 +164,29 @@ public class PrimitiveOperations {
                 block.fdiv();
             else if (operandsClass == double.class)
                 block.ddiv();
+        } else if (op.equals("%")) {
+            if (operandsClass == int.class)
+                block.irem();
+            else if (operandsClass == long.class)
+                block.lrem();
+            else if (operandsClass == float.class)
+                block.frem();
+            else if (operandsClass == double.class)
+                block.drem();
         }
     }
+
+    public static void compilePrimitiveOperation(CodeBlock block, Stack<Class> classStack, TerminalNode operation) {
+        String op = operation.getSymbol().getText();
+        if (op.equals("+") || op.equals("-") || op.equals("*") || op.equals("/")
+            || op.equals("%"))
+            compileNumericOperation(block, classStack, op);
+        else if (op.equals("dup"))
+            compileDup(block, classStack);
+        else if (op.equals("swap"))
+            compileSwap(block, classStack);
+        else if (op.equals("pop"))
+            compilePop(block, classStack);
+    }
+
 }

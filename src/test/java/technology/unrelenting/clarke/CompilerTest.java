@@ -25,11 +25,14 @@ public class CompilerTest {
         Class testClass = eval("ar :: int -> int = 2 * 1 -;");
         assertEquals(19, testClass.getMethod("ar", int.class).invoke(null, 10));
 
-        testClass = eval("ar :: long -> long = 2L * 1 -;");
-        assertEquals(19L, testClass.getMethod("ar", long.class).invoke(null, 10L));
+        testClass = eval("ar :: long -> long = 2L * 1 - 10 %;");
+        assertEquals(9L, testClass.getMethod("ar", long.class).invoke(null, 10L));
 
         testClass = eval("ar :: int -> double = 2.5 * 1.0f 1L - + 10_000 /;");
         assertEquals(0.0025, testClass.getMethod("ar", int.class).invoke(null, 10));
+
+        testClass = eval("ar :: long -> long = dup * 5 swap - dup pop;");
+        assertEquals(-95L, testClass.getMethod("ar", long.class).invoke(null, 10L));
     }
 
     @Test public void testStaticCalls() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {

@@ -16,7 +16,7 @@ returnType : ID ;
 
 expr : literal | ID | PrimitiveOperation ;
 
-PrimitiveOperation : '+' | '-' | '*' | '/' ;
+PrimitiveOperation : '+' | '-' | '*' | '/' | '%' | 'dup' | 'swap' | 'pop' ;
 
 
 literal : IntLiteral | LongLiteral | FloatLiteral | DoubleLiteral | StringLiteral ;
