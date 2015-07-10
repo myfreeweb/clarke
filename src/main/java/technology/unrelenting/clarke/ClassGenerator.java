@@ -1,8 +1,8 @@
 package technology.unrelenting.clarke;
 
-import me.qmx.jitescript.CodeBlock;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.objectweb.asm.Opcodes;
+import me.qmx.jitescript.CodeBlock;
+import me.qmx.jitescript.internal.org.objectweb.asm.Opcodes;
 import me.qmx.jitescript.JiteClass;
 
 import java.util.*;
@@ -46,6 +46,8 @@ public class ClassGenerator extends ClarkeBaseListener {
 
     private Class resolveType(TerminalNode typeID) {
         String typeName = typeID.getText();
+        if (typeName.equals("boolean") || typeName.equals("bool"))
+            return boolean.class;
         if (typeName.equals("int"))
             return int.class;
         if (typeName.equals("long"))
@@ -62,8 +64,11 @@ public class ClassGenerator extends ClarkeBaseListener {
     }
 
     private void compilePushLiteral(CodeBlock block, ClarkeParser.LiteralContext literal) {
-        if (literal.IntLiteral() != null) {
-            block.ldc(Integer.parseInt(literal.IntLiteral().getSymbol().getText()
+        if (literal.BooleanLiteral() != null) {
+            block.pushBoolean(literal.BooleanLiteral().getSymbol().getText().equals("true"));
+            this.classStack.push(boolean.class);
+        } else if (literal.IntLiteral() != null) {
+            block.pushInt(Integer.parseInt(literal.IntLiteral().getSymbol().getText()
                     .replace("_", "")));
             this.classStack.push(int.class);
         } else if (literal.LongLiteral() != null) {
@@ -116,7 +121,7 @@ public class ClassGenerator extends ClarkeBaseListener {
 
     private void compileArgumentsLoad(CodeBlock block, Class[] signature) {
         for (int i = 1; i < signature.length; i++) {
-            if (signature[i] == int.class)
+            if (signature[i] == boolean.class || signature[i] == int.class)
                 block.iload(i - 1);
             else if (signature[i] == long.class)
                 block.lload(i - 1);
@@ -132,7 +137,7 @@ public class ClassGenerator extends ClarkeBaseListener {
     private void compileReturn(CodeBlock block, Class returnType) {
         if (returnType == null)
             block.voidreturn();
-        else if (returnType == int.class)
+        else if (returnType == boolean.class || returnType == int.class)
             block.ireturn();
         else if (returnType == long.class)
             block.lreturn();

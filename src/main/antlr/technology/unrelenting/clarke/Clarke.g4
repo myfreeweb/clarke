@@ -16,12 +16,15 @@ returnType : ID ;
 
 expr : literal | ID | PrimitiveOperation ;
 
-PrimitiveOperation : '+' | '-' | '*' | '/' | '%' | 'dup' | 'swap' | 'pop' ;
+PrimitiveOperation
+    : '+' | '-' | '*' | '/' | '%'
+    | '¬' | '∧' | '∨' | '==' | '≠' | '<' | '>' | '≤' | '≥'
+    | 'dup' | 'swap' | 'pop' ;
 
 
-literal : IntLiteral | LongLiteral | FloatLiteral | DoubleLiteral | StringLiteral ;
+literal : BooleanLiteral | IntLiteral | LongLiteral | FloatLiteral | DoubleLiteral | StringLiteral ;
 
-StringLiteral : '"' ( '\\"' | . )*? '"' ;
+BooleanLiteral : 'true' | 'false' ;
 
 IntLiteral : NumericLiteral ;
 
@@ -36,6 +39,8 @@ NumericLiteral : NumericChar+ ;
 fragment NumericChar
     : [0-9]
     | '_' ;
+
+StringLiteral : '"' ( '\\"' | . )*? '"' ;
 
 
 ID : IDChar+ ;

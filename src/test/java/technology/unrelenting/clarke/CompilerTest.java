@@ -35,6 +35,35 @@ public class CompilerTest {
         assertEquals(-95L, testClass.getMethod("ar", long.class).invoke(null, 10L));
     }
 
+    @Test public void testBooleans() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Class testClass = eval("bo :: bool -> bool = ¬;");
+        assertEquals(true, testClass.getMethod("bo", boolean.class).invoke(null, false));
+
+        testClass = eval("bo :: bool bool -> bool = ∧;");
+        assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, false));
+        assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, false));
+        assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
+        assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, true));
+
+        testClass = eval("bo :: bool bool -> bool = ∨;");
+        assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, false));
+        assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, false));
+        assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
+        assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, true));
+
+        testClass = eval("bo :: -> bool = 1 dup ==;");
+        assertEquals(true, testClass.getMethod("bo").invoke(null));
+
+        testClass = eval("bo :: -> bool = 2L dup ≠;");
+        assertEquals(false, testClass.getMethod("bo").invoke(null));
+
+        testClass = eval("bo :: -> bool = 2L 3 ≥ ¬;");
+        assertEquals(true, testClass.getMethod("bo").invoke(null));
+
+        testClass = eval("bo :: boolean bool -> bool = ¬ ∨ false ==;");
+        assertEquals(true, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
+    }
+
     @Test public void testStaticCalls() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("testHello :: -> java.lang.String = hello; hello :: -> java.lang.String = \"Hello\";");
         assertEquals("Hello", testClass.getMethod("testHello").invoke(null));

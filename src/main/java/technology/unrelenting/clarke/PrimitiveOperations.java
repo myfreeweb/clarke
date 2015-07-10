@@ -1,6 +1,7 @@
 package technology.unrelenting.clarke;
 
 import me.qmx.jitescript.CodeBlock;
+import me.qmx.jitescript.internal.org.objectweb.asm.tree.LabelNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.Stack;
@@ -11,22 +12,23 @@ public class PrimitiveOperations {
         return klass == long.class || klass == double.class;
     }
 
+    public static boolean isNumeric(Class klass) {
+        return klass == boolean.class || klass == int.class || klass == long.class
+            || klass == float.class || klass == double.class;
+    }
+
     public static void compileSwap(CodeBlock block, Class upper, Class lower) {
         // https://stackoverflow.com/questions/11340330/java-bytecode-swap-for-double-and-long-values
         boolean upperTwoSlots = isTwoSlot(upper);
         boolean lowerTwoSlots = isTwoSlot(lower);
-        if (!upperTwoSlots && !lowerTwoSlots) {
+        if (!upperTwoSlots && !lowerTwoSlots)
             block.swap();
-        } else if (!upperTwoSlots && lowerTwoSlots) {
-            block.dup_x2();
-            block.pop();
-        } else if (upperTwoSlots && !lowerTwoSlots) {
-            block.dup2_x1();
-            block.pop2();
-        } else if (upperTwoSlots && lowerTwoSlots) {
-            block.dup2_x2();
-            block.pop2();
-        }
+        else if (!upperTwoSlots && lowerTwoSlots)
+            block.dup_x2().pop();
+        else if (upperTwoSlots && !lowerTwoSlots)
+            block.dup2_x1().pop2();
+        else if (upperTwoSlots && lowerTwoSlots)
+            block.dup2_x2().pop2();
     }
 
     public static void compileSwap(CodeBlock block, Stack<Class> classStack) {
@@ -58,68 +60,61 @@ public class PrimitiveOperations {
     public static Class castNumericTypes(CodeBlock block, Stack<Class> classStack) {
         Class rightOperandType = classStack.pop();
         Class leftOperandType = classStack.pop();
+        Class result = castNumericTypes(block, rightOperandType, leftOperandType);
+        classStack.push(result);
+        return result;
+    }
+
+    public static Class castNumericTypes(CodeBlock block, Class rightOperandType, Class leftOperandType) {
         if (leftOperandType == rightOperandType) {
-            classStack.push(leftOperandType);
             return leftOperandType;
         } else if (leftOperandType == long.class && rightOperandType == int.class) {
             block.i2l();
-            classStack.push(long.class);
             return long.class;
         } else if (leftOperandType == int.class && rightOperandType == long.class) {
             compileSwap(block, rightOperandType, leftOperandType);
             block.i2l();
             compileSwap(block, rightOperandType, rightOperandType);
-            classStack.push(long.class);
             return long.class;
         } else if (leftOperandType == float.class && rightOperandType == int.class) {
             block.i2f();
-            classStack.push(float.class);
             return float.class;
         } else if (leftOperandType == int.class && rightOperandType == float.class) {
             compileSwap(block, rightOperandType, leftOperandType);
             block.i2f();
             compileSwap(block, rightOperandType, rightOperandType);
-            classStack.push(float.class);
             return float.class;
         } else if (leftOperandType == float.class && rightOperandType == long.class) {
             block.l2f();
-            classStack.push(float.class);
             return float.class;
         } else if (leftOperandType == long.class && rightOperandType == float.class) {
             compileSwap(block, rightOperandType, leftOperandType);
             block.l2f();
             compileSwap(block, rightOperandType, rightOperandType);
-            classStack.push(float.class);
             return float.class;
         } else if (leftOperandType == double.class && rightOperandType == int.class) {
             block.i2d();
-            classStack.push(double.class);
             return double.class;
         } else if (leftOperandType == int.class && rightOperandType == double.class) {
             compileSwap(block, rightOperandType, leftOperandType);
             block.i2d();
             compileSwap(block, rightOperandType, rightOperandType);
-            classStack.push(double.class);
             return double.class;
         } else if (leftOperandType == double.class && rightOperandType == long.class) {
             block.l2d();
-            classStack.push(double.class);
             return double.class;
         } else if (leftOperandType == long.class && rightOperandType == double.class) {
             compileSwap(block, rightOperandType, leftOperandType);
             block.l2d();
             compileSwap(block, rightOperandType, rightOperandType);
-            classStack.push(double.class);
             return double.class;
         } else if (leftOperandType == double.class && rightOperandType == float.class) {
             block.f2d();
-            classStack.push(double.class);
             return double.class;
         } else if (leftOperandType == float.class && rightOperandType == double.class) {
             compileSwap(block, rightOperandType, leftOperandType);
             block.f2d();
             compileSwap(block, rightOperandType, rightOperandType);
-            classStack.push(double.class);
             return double.class;
         }
         return null;
@@ -176,11 +171,122 @@ public class PrimitiveOperations {
         }
     }
 
+    public static void compileBooleanOperation(CodeBlock block, Stack<Class> classStack, String op) {
+        Class upper = classStack.pop();
+        if (op.equals("¬")) {
+            // if (upper != boolean.class)
+            //     throw new Exception("Can't apply logical NOT to a non-boolean");
+            LabelNode stopLabel = new LabelNode();
+            LabelNode trueLabel = new LabelNode();
+            block.ifeq(trueLabel)
+                .iconst_0()
+                .go_to(stopLabel)
+                .label(trueLabel)
+                .iconst_1()
+                .label(stopLabel);
+            classStack.push(boolean.class);
+            return;
+        }
+        Class lower = classStack.pop();
+        // ∧ and ∨ are a bit more complicated than what javac generates
+        // because we always have both operands already on the stack
+        // whereas javac can skip some loading and avoid dealing with the pop
+        if (op.equals("∧")) {
+            // if (upper != boolean.class || lower != boolean.class)
+            //     throw new Exception("Can't apply logical AND to a non-boolean");
+            LabelNode stopLabel = new LabelNode();
+            LabelNode falseLabel = new LabelNode();
+            LabelNode falseLabel1 = new LabelNode();
+            block.ifeq(falseLabel1)
+                .ifeq(falseLabel)
+                .iconst_1()
+                .go_to(stopLabel)
+                .label(falseLabel1)
+                .pop()
+                .label(falseLabel)
+                .iconst_0()
+                .label(stopLabel);
+            classStack.push(boolean.class);
+        } else if (op.equals("∨")) {
+            // if (upper != boolean.class || lower != boolean.class)
+            //     throw new Exception("Can't apply logical OR to a non-boolean");
+            LabelNode stopLabel = new LabelNode();
+            LabelNode trueLabel = new LabelNode();
+            LabelNode trueLabel1 = new LabelNode();
+            LabelNode falseLabel = new LabelNode();
+            block.ifne(trueLabel1)
+                .ifeq(falseLabel)
+                .go_to(trueLabel)
+                .label(trueLabel1)
+                .pop()
+                .label(trueLabel)
+                .iconst_1()
+                .go_to(stopLabel)
+                .label(falseLabel)
+                .iconst_0()
+                .label(stopLabel);
+            classStack.push(boolean.class);
+        } else if (op.equals("==") || op.equals("≠") || op.equals("<") || op.equals(">")
+                || op.equals("≤") || op.equals("≥")) {
+            LabelNode falseLabel = new LabelNode();
+            LabelNode stopLabel = new LabelNode();
+            if (isNumeric(upper) && isNumeric(lower)) {
+                Class numClass = castNumericTypes(block, upper, lower);
+                if (numClass == int.class) { // WHY
+                    if (op.equals("==") || op.equals("≠"))
+                        block.if_icmpne(falseLabel);
+                    else if (op.equals("<"))
+                        block.if_icmpge(falseLabel);
+                    else if (op.equals("≤"))
+                        block.if_icmpgt(falseLabel);
+                    else if (op.equals(">"))
+                        block.if_icmple(falseLabel);
+                    else if (op.equals("≥"))
+                        block.if_icmplt(falseLabel);
+                } else {
+                    if (numClass == long.class)
+                        block.lcmp();
+                    else if (numClass == float.class)
+                        block.fcmpl();
+                    else if (numClass == double.class)
+                        block.dcmpl();
+                    if (op.equals("==") || op.equals("≠"))
+                        block.ifne(falseLabel);
+                    else if (op.equals("<"))
+                        block.ifge(falseLabel);
+                    else if (op.equals("≤"))
+                        block.ifgt(falseLabel);
+                    else if (op.equals(">"))
+                        block.ifle(falseLabel);
+                    else if (op.equals("≥"))
+                        block.iflt(falseLabel);
+                }
+            } else {
+                block.if_acmpne(falseLabel);
+            }
+            if (op.equals("≠"))
+                block.iconst_0();
+            else
+                block.iconst_1();
+            block.go_to(stopLabel).label(falseLabel);
+            if (op.equals("≠"))
+                block.iconst_1();
+            else
+                block.iconst_0();
+            block.label(stopLabel);
+        }
+        classStack.push(boolean.class);
+    }
+
     public static void compilePrimitiveOperation(CodeBlock block, Stack<Class> classStack, TerminalNode operation) {
         String op = operation.getSymbol().getText();
         if (op.equals("+") || op.equals("-") || op.equals("*") || op.equals("/")
             || op.equals("%"))
             compileNumericOperation(block, classStack, op);
+        else if (op.equals("¬") || op.equals("∧") || op.equals("∨") || op.equals("==")
+            || op.equals("≠") || op.equals("<") || op.equals(">")
+            || op.equals("≤") || op.equals("≥"))
+            compileBooleanOperation(block, classStack, op);
         else if (op.equals("dup"))
             compileDup(block, classStack);
         else if (op.equals("swap"))

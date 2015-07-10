@@ -14,8 +14,8 @@ repositories {
 }
 
 dependencies {
-    compile 'me.qmx.jitescript:jitescript:0.3.0'
     antlr 'org.antlr:antlr4:4.5'
+    compile 'me.qmx.jitescript:jitescript:0.4.0'
     testCompile 'junit:junit:4.11'
 }
 
