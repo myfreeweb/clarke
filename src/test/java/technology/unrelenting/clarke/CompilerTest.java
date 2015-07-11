@@ -22,50 +22,50 @@ public class CompilerTest {
     }
 
     @Test public void testArithmetic() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        Class testClass = eval("ar :: int -> int = 2 * 1 -;");
+        Class testClass = eval("ar ∷ int → int = 2 * 1 -;");
         assertEquals(19, testClass.getMethod("ar", int.class).invoke(null, 10));
 
-        testClass = eval("ar :: long -> long = 2L * 1 - 10 %;");
+        testClass = eval("ar ∷ long → long = 2L * 1 - 10 %;");
         assertEquals(9L, testClass.getMethod("ar", long.class).invoke(null, 10L));
 
-        testClass = eval("ar :: int -> double = 2.5 * 1.0f 1L - + 10_000 /;");
+        testClass = eval("ar ∷ int → double = 2.5 * 1.0f 1L - + 10_000 /;");
         assertEquals(0.0025, testClass.getMethod("ar", int.class).invoke(null, 10));
 
-        testClass = eval("ar :: long -> long = dup * 5 swap - dup pop;");
+        testClass = eval("ar ∷ long → long = dup * 5 swap - dup pop;");
         assertEquals(-95L, testClass.getMethod("ar", long.class).invoke(null, 10L));
     }
 
     @Test public void testBooleans() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        Class testClass = eval("bo :: bool -> bool = ¬;");
+        Class testClass = eval("bo ∷ bool → bool = ¬;");
         assertEquals(true, testClass.getMethod("bo", boolean.class).invoke(null, false));
 
-        testClass = eval("bo :: bool bool -> bool = ∧;");
+        testClass = eval("bo ∷ bool bool → bool = ∧;");
         assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, false));
         assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, false));
         assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
         assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, true));
 
-        testClass = eval("bo :: bool bool -> bool = ∨;");
+        testClass = eval("bo ∷ bool bool → bool = ∨;");
         assertEquals(false, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, false));
         assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, false));
         assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
         assertEquals(true,  testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, true, true));
 
-        testClass = eval("bo :: -> bool = 1 dup ==;");
+        testClass = eval("bo ∷ → bool = 1 dup ==;");
         assertEquals(true, testClass.getMethod("bo").invoke(null));
 
-        testClass = eval("bo :: -> bool = 2L dup ≠;");
+        testClass = eval("bo ∷ → bool = 2L dup ≠;");
         assertEquals(false, testClass.getMethod("bo").invoke(null));
 
-        testClass = eval("bo :: -> bool = 2L 3 ≥ ¬;");
+        testClass = eval("bo ∷ → bool = 2L 3 ≥ ¬;");
         assertEquals(true, testClass.getMethod("bo").invoke(null));
 
-        testClass = eval("bo :: boolean bool -> bool = ¬ ∨ false ==;");
+        testClass = eval("bo ∷ boolean bool → bool = ¬ ∨ false ==;");
         assertEquals(true, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
     }
 
     @Test public void testStaticCalls() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        Class testClass = eval("testHello :: -> java.lang.String = hello; hello :: -> java.lang.String = \"Hello\";");
+        Class testClass = eval("testHello ∷ → java.lang.String = hello; hello ∷ → java.lang.String = \"Hello\";");
         assertEquals("Hello", testClass.getMethod("testHello").invoke(null));
     }
 

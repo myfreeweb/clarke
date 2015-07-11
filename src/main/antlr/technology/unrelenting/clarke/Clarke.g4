@@ -6,9 +6,9 @@ options {
 
 program : definition* EOF ;
 
-definition : ID ( ( '::' | '∷' ) typeSignature )? '=' expr+ ';' ;
+definition : ID ( '∷' typeSignature )? '=' expr+ ';' ;
 
-typeSignature : argTypes ( ( '->' | '→') returnType )? ;
+typeSignature : argTypes ( '→' returnType )? ;
 
 argTypes : ID*? ;
 
