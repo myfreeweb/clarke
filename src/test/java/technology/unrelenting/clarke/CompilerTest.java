@@ -87,6 +87,11 @@ public class CompilerTest {
         assertEquals(4, testClass.getMethod("cf", boolean.class).invoke(null, false));
     }
 
+    @Test public void testLoops() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Class testClass = eval("lp ∷ → int = 90 { 1 + } { dup 100 < } while;");
+        assertEquals(100, testClass.getMethod("lp").invoke(null));
+    }
+
     @Test public void testStaticCalls() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("testHello ∷ → java.lang.String = hello; hello ∷ → java.lang.String = \"Hello\";");
         assertEquals("Hello", testClass.getMethod("testHello").invoke(null));

@@ -115,6 +115,22 @@ public class ClassGenerator extends ClarkeBaseListener {
         }
     }
 
+    private void compileLoop(CodeBlock block, ClarkeParser.LoopExprContext ctx)
+            throws CompilerException {
+        LabelNode startLabel = new LabelNode();
+        LabelNode stopLabel = new LabelNode();
+        if (ctx.whileExpr() != null) {
+            block.label(startLabel);
+            compileExprs(block, ctx.whileExpr().groupExpr(1).expr());
+            if (classStack.pop() != boolean.class)
+                throw new CompilerException("Loop condition must return a boolean.");
+            block.ifeq(stopLabel);
+            compileExprs(block, ctx.whileExpr().groupExpr(0).expr());
+            block.go_to(startLabel)
+                .label(stopLabel);
+        }
+    }
+
     private void compileCachedStaticMethodCall(CodeBlock block, String slashedClassName, String methodName, Class[] signature) {
         if (paramsMatchStack(ArrayUtils.subarray(signature, 1, signature.length + 1))) {
             block.invokestatic(slashedClassName, methodName, sig(signature));
@@ -220,6 +236,8 @@ public class ClassGenerator extends ClarkeBaseListener {
                 PrimitiveOperations.compilePrimitiveOperation(block, classStack, expr.PrimitiveOperation());
             else if (expr.controlFlowExpr() != null)
                 compileControlFlow(block, expr.controlFlowExpr());
+            else if (expr.loopExpr() != null)
+                compileLoop(block, expr.loopExpr());
             else if (expr.qualifiedName() != null)
                 compileMethodCall(block, expr.qualifiedName());
         }

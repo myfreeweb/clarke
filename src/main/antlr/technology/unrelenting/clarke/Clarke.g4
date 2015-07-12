@@ -16,7 +16,7 @@ argTypes : qualifiedName*? ;
 
 returnType : qualifiedName ;
 
-expr : controlFlowExpr | PrimitiveOperation | literal | qualifiedName ;
+expr : controlFlowExpr | loopExpr | PrimitiveOperation | literal | qualifiedName ;
 
 controlFlowExpr : ifExpr | whenExpr | unlessExpr ;
 
@@ -25,6 +25,10 @@ ifExpr : groupExpr groupExpr 'if' ;
 whenExpr : groupExpr 'when' ;
 
 unlessExpr : groupExpr 'unless' ;
+
+loopExpr : whileExpr ;
+
+whileExpr : groupExpr groupExpr 'while' ;
 
 groupExpr : '{' expr+ '}' ;
 
