@@ -1,12 +1,14 @@
 plugins {
     id 'java'
     id 'antlr'
+    id 'application'
     id 'com.github.johnrengelman.shadow' version '1.2.1'
 }
 
 group 'technology.unrelenting'
 version '1.0-SNAPSHOT'
 
+mainClassName = 'technology.unrelenting.clarke.Compiler'
 // sourceCompatibility = 1.6
 
 repositories {

@@ -31,6 +31,12 @@ public class ClassGenerator extends ClarkeBaseListener {
     public List<JiteClass> generate()
         throws CompilerException {
         for (String className : classesToCompile.keySet()) {
+            Map<String, Class[]> methodSignatures = new HashMap<String, Class[]>();
+            for (ClarkeParser.MethodDefinitionContext methodCtx : classesToCompile.get(className).methodDefinition())
+                methodSignatures.put(methodCtx.qualifiedName().getText(), buildSignature(methodCtx));
+            methodSigCache.put(className, methodSignatures);
+        }
+        for (String className : classesToCompile.keySet()) {
             jiteClass = new JiteClass(className);
             classNameSlashed = className.replace('.', '/');
             for (ClarkeParser.MethodDefinitionContext methodCtx : classesToCompile.get(className).methodDefinition())
@@ -45,8 +51,19 @@ public class ClassGenerator extends ClarkeBaseListener {
         return jiteClasses;
     }
 
-    private Class resolveType(ClarkeParser.QualifiedNameContext typeID) {
-        String typeName = typeID.getText();
+    private Class resolveType(ClarkeParser.TypeNameContext typeID)
+        throws CompilerException {
+        try {
+            if (typeID.arrayTypeName() != null)
+                return Class.forName("[L" + resolveType(typeID.arrayTypeName().qualifiedName().getText()).getName() + ";");
+            return resolveType(typeID.qualifiedName().getText());
+        } catch (ClassNotFoundException ex) {
+            throw new CompilerException(ex);
+        }
+    }
+
+    private Class resolveType(String typeName)
+        throws ClassNotFoundException {
         if (typeName.equals("boolean") || typeName.equals("bool"))
             return boolean.class;
         if (typeName.equals("int"))
@@ -57,11 +74,7 @@ public class ClassGenerator extends ClarkeBaseListener {
             return float.class;
         if (typeName.equals("double"))
             return double.class;
-        try {
-            return Class.forName(typeName);
-        } catch (ClassNotFoundException ex) {
-            return null;
-        }
+        return Class.forName(typeName);
     }
 
     private void compilePushLiteral(CodeBlock block, ClarkeParser.LiteralContext literal) {
@@ -193,21 +206,22 @@ public class ClassGenerator extends ClarkeBaseListener {
         return true;
     }
 
-    private Class[] buildSignature(ClarkeParser.MethodDefinitionContext ctx) {
+    private Class[] buildSignature(ClarkeParser.MethodDefinitionContext ctx)
+        throws CompilerException {
         List<Class> signature = new ArrayList<Class>();
         if (ctx.typeSignature() != null) {
             if (ctx.typeSignature().returnType() != null)
-                signature.add(resolveType(ctx.typeSignature().returnType().qualifiedName()));
+                signature.add(resolveType(ctx.typeSignature().returnType().typeName()));
             else
-                signature.add(null);
+                signature.add(void.class);
             if (ctx.typeSignature().argTypes() != null) {
-                for (ClarkeParser.QualifiedNameContext typeName : ctx.typeSignature().argTypes().qualifiedName()) {
+                for (ClarkeParser.TypeNameContext typeName : ctx.typeSignature().argTypes().typeName()) {
                     Class argClass = resolveType(typeName);
                     signature.add(argClass);
                 }
             }
         } else {
-            signature.add(null);
+            signature.add(void.class);
         }
         return signature.toArray(new Class[signature.size()]);
     }
@@ -244,7 +258,7 @@ public class ClassGenerator extends ClarkeBaseListener {
     }
 
     private void compileReturn(CodeBlock block, Class returnType) {
-        if (returnType == null)
+        if (returnType == null || returnType == void.class)
             block.voidreturn();
         else if (returnType == boolean.class || returnType == int.class)
             block.ireturn();
@@ -274,10 +288,6 @@ public class ClassGenerator extends ClarkeBaseListener {
 
     @Override public void exitClassDefinition(ClarkeParser.ClassDefinitionContext ctx) {
         String name = ctx.qualifiedName().getText();
-        Map<String, Class[]> methodSignatures = new HashMap<String, Class[]>();
-        for (ClarkeParser.MethodDefinitionContext methodCtx : ctx.methodDefinition())
-            methodSignatures.put(methodCtx.qualifiedName().getText(), buildSignature(methodCtx));
-        methodSigCache.put(name, methodSignatures);
         classesToCompile.put(name, ctx);
     }
 

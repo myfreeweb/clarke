@@ -12,9 +12,13 @@ methodDefinition : qualifiedName ( '∷' typeSignature )? '=' expr+ ';' ;
 
 typeSignature : argTypes ( '→' returnType )? ;
 
-argTypes : qualifiedName*? ;
+argTypes : typeName*? ;
 
-returnType : qualifiedName ;
+returnType : typeName ;
+
+typeName : arrayTypeName | qualifiedName ;
+
+arrayTypeName : qualifiedName '[]' ;
 
 expr : controlFlowExpr | loopExpr | PrimitiveOperation | literal | qualifiedName ;
 
@@ -36,7 +40,7 @@ groupExpr : '{' expr+ '}' ;
 PrimitiveOperation
     : '+' | '-' | '*' | '/' | '%'
     | '¬' | '∧' | '∨' | '==' | '≠' | '<' | '>' | '≤' | '≥'
-    | 'dup' | 'swap' | 'pop' ;
+    | 'dup' | 'swap' | 'pop' | 'println' ;
 
 
 literal : BooleanLiteral | IntLiteral | LongLiteral | FloatLiteral | DoubleLiteral | StringLiteral ;

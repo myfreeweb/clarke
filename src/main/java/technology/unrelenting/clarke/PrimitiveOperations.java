@@ -57,6 +57,14 @@ public class PrimitiveOperations {
             block.pop();
     }
 
+    public static void compilePrintln(CodeBlock block, Stack<Class> classStack) {
+        Class upper = classStack.pop();
+        if (upper == int.class)
+            block.iprintln();
+        else
+            block.aprintln();
+    }
+
     public static Class castNumericTypes(CodeBlock block, Stack<Class> classStack) {
         Class rightOperandType = classStack.pop();
         Class leftOperandType = classStack.pop();
@@ -295,6 +303,8 @@ public class PrimitiveOperations {
             compileSwap(block, classStack);
         else if (op.equals("pop"))
             compilePop(block, classStack);
+        else if (op.equals("println"))
+            compilePrintln(block, classStack);
     }
 
 }

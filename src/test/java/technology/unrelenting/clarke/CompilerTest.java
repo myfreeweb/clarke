@@ -10,8 +10,6 @@ import static org.junit.Assert.assertEquals;
 
 public class CompilerTest {
 
-    final Compiler compiler = new Compiler();
-
     public static class DynamicClassLoader extends ClassLoader {
         public Class define(JiteClass jiteClass) {
             byte[] classBytes = jiteClass.toBytes();
@@ -20,12 +18,12 @@ public class CompilerTest {
     }
 
     private Class eval(String code) throws CompilerException {
-        return new DynamicClassLoader().define(compiler.compileClasses("class TestClass; " + code).get(0));
+        return new DynamicClassLoader().define(Compiler.compileClasses("class TestClass; " + code).get(0));
     }
 
     private DynamicClassLoader evalClasses(String code) throws CompilerException {
         DynamicClassLoader classLoader = new DynamicClassLoader();
-        for (JiteClass jiteClass : compiler.compileClasses(code))
+        for (JiteClass jiteClass : Compiler.compileClasses(code))
             classLoader.define(jiteClass);
         return classLoader;
     }
@@ -90,6 +88,11 @@ public class CompilerTest {
     @Test public void testLoops() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("lp ∷ → int = 90 { 1 + } { dup 100 < } while;");
         assertEquals(100, testClass.getMethod("lp").invoke(null));
+    }
+
+    @Test public void testVoid() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Class testClass = eval("drp ∷ int = pop;");
+        assertEquals(null, testClass.getMethod("drp", int.class).invoke(null, 1));
     }
 
     @Test public void testStaticCalls() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
