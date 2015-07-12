@@ -50,27 +50,27 @@ public class ClassGenerator extends ClarkeBaseListener {
     private void compilePushLiteral(CodeBlock block, ClarkeParser.LiteralContext literal) {
         if (literal.BooleanLiteral() != null) {
             block.pushBoolean(literal.BooleanLiteral().getSymbol().getText().equals("true"));
-            this.classStack.push(boolean.class);
+            classStack.push(boolean.class);
         } else if (literal.IntLiteral() != null) {
             block.pushInt(Integer.parseInt(literal.IntLiteral().getSymbol().getText()
                     .replace("_", "")));
-            this.classStack.push(int.class);
+            classStack.push(int.class);
         } else if (literal.LongLiteral() != null) {
             block.ldc(Long.parseLong(literal.LongLiteral().getSymbol().getText()
                     .replace("_", "").replace("l", "").replace("L", "")));
-            this.classStack.push(long.class);
+            classStack.push(long.class);
         } else if (literal.FloatLiteral() != null) {
             block.ldc(Float.parseFloat(literal.FloatLiteral().getSymbol().getText()
                     .replace("_", "").replace("f", "").replace("F", "")));
-            this.classStack.push(float.class);
+            classStack.push(float.class);
         } else if (literal.DoubleLiteral() != null) {
             block.ldc(Double.parseDouble(literal.DoubleLiteral().getSymbol().getText()
                     .replace("_", "").replace("d", "").replace("D", "")));
-            this.classStack.push(double.class);
+            classStack.push(double.class);
         } else if (literal.StringLiteral() != null) {
             String s = literal.StringLiteral().getText();
             block.ldc(s.substring(1, s.length() - 1));
-            this.classStack.push(String.class);
+            classStack.push(String.class);
         }
     }
 
@@ -80,7 +80,7 @@ public class ClassGenerator extends ClarkeBaseListener {
         if (qualifiedName.size() == 1) {
             String methodName = qualifiedName.get(0).getText();
             if (currentMethodSignatures.containsKey(methodName)) {
-                block.invokestatic(this.classNameSlashed, methodName, sig(currentMethodSignatures.get(methodName)));
+                block.invokestatic(classNameSlashed, methodName, sig(currentMethodSignatures.get(methodName)));
             }
         } else {
             String methodName = qualifiedName.get(qualifiedName.size() - 1).getText();
@@ -105,7 +105,7 @@ public class ClassGenerator extends ClarkeBaseListener {
                 for (ClarkeParser.QualifiedNameContext typeName : ctx.typeSignature().argTypes().qualifiedName()) {
                     Class argClass = resolveType(typeName);
                     signature.add(argClass);
-                    this.classStack.push(argClass);
+                    classStack.push(argClass);
                 }
             }
         } else {
@@ -151,12 +151,12 @@ public class ClassGenerator extends ClarkeBaseListener {
             if (expr.literal() != null)
                 compilePushLiteral(block, expr.literal());
             else if (expr.PrimitiveOperation() != null)
-                PrimitiveOperations.compilePrimitiveOperation(block, this.classStack, expr.PrimitiveOperation());
+                PrimitiveOperations.compilePrimitiveOperation(block, classStack, expr.PrimitiveOperation());
             else if (expr.qualifiedName() != null)
                 compileMethodCall(block, expr.qualifiedName());
         }
         compileReturn(block, signature[0]);
-        this.jiteClass.defineMethod(ctx.qualifiedName().getText(),
+        jiteClass.defineMethod(ctx.qualifiedName().getText(),
                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                 sig(signature), block);
     }
@@ -176,7 +176,7 @@ public class ClassGenerator extends ClarkeBaseListener {
             currentMethodSigs.put(methodName, sig(currentMethodSignatures.get(methodName)));
         methodSigCache.put(name, currentMethodSigs);
 //        try {
-//            Files.write(Paths.get("TestClass.class"), this.jiteClass.toBytes());
+//            Files.write(Paths.get("TestClass.class"), jiteClass.toBytes());
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
