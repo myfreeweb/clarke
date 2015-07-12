@@ -44,7 +44,7 @@ public class ClassGenerator extends ClarkeBaseListener {
         return this.jiteClass;
     }
 
-    private Class resolveType(TerminalNode typeID) {
+    private Class resolveType(ClarkeParser.QualifiedNameContext typeID) {
         String typeName = typeID.getText();
         if (typeName.equals("boolean") || typeName.equals("bool"))
             return boolean.class;
@@ -90,7 +90,7 @@ public class ClassGenerator extends ClarkeBaseListener {
         }
     }
 
-    private void compileMethodCall(CodeBlock block, TerminalNode methodName) {
+    private void compileMethodCall(CodeBlock block, ClarkeParser.QualifiedNameContext methodName) {
         // TODO: resolve static methods of other classes
         String name = methodName.getText();
         if (methodDefinitions.containsKey(name)) {
@@ -103,11 +103,11 @@ public class ClassGenerator extends ClarkeBaseListener {
         List<Class> signature = new ArrayList<Class>();
         if (ctx.typeSignature() != null) {
             if (ctx.typeSignature().returnType() != null)
-                signature.add(resolveType(ctx.typeSignature().returnType().ID()));
+                signature.add(resolveType(ctx.typeSignature().returnType().qualifiedName()));
             else
                 signature.add(null);
             if (ctx.typeSignature().argTypes() != null) {
-                for (TerminalNode typeName : ctx.typeSignature().argTypes().ID()) {
+                for (ClarkeParser.QualifiedNameContext typeName : ctx.typeSignature().argTypes().qualifiedName()) {
                     Class argClass = resolveType(typeName);
                     signature.add(argClass);
                     this.classStack.push(argClass);
@@ -150,7 +150,7 @@ public class ClassGenerator extends ClarkeBaseListener {
     }
 
     @Override public void exitDefinition(ClarkeParser.DefinitionContext ctx) {
-        methodDefinitions.put(ctx.ID().getText(), new MethodDefinition(ctx, buildSignature(ctx)));
+        methodDefinitions.put(ctx.qualifiedName().getText(), new MethodDefinition(ctx, buildSignature(ctx)));
     }
 
     private void compileMethod(MethodDefinition definition) {
@@ -163,11 +163,11 @@ public class ClassGenerator extends ClarkeBaseListener {
                 compilePushLiteral(block, expr.literal());
             else if (expr.PrimitiveOperation() != null)
                 PrimitiveOperations.compilePrimitiveOperation(block, this.classStack, expr.PrimitiveOperation());
-            else if (expr.ID() != null)
-                compileMethodCall(block, expr.ID());
+            else if (expr.qualifiedName() != null)
+                compileMethodCall(block, expr.qualifiedName());
         }
         compileReturn(block, signature[0]);
-        this.jiteClass.defineMethod(ctx.ID().getText(),
+        this.jiteClass.defineMethod(ctx.qualifiedName().getText(),
                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                 sig(signature), block);
     }
