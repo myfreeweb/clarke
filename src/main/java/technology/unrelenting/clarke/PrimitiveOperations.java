@@ -171,7 +171,8 @@ public class PrimitiveOperations {
         }
     }
 
-    public static void compileBooleanOperation(CodeBlock block, Stack<Class> classStack, String op) {
+    public static void compileBooleanOperation(CodeBlock block, Stack<Class> classStack, String op)
+        throws CompilerException {
         Class upper = classStack.pop();
         if (op.equals("¬")) {
             // if (upper != boolean.class)
@@ -192,8 +193,8 @@ public class PrimitiveOperations {
         // because we always have both operands already on the stack
         // whereas javac can skip some loading and avoid dealing with the pop
         if (op.equals("∧")) {
-            // if (upper != boolean.class || lower != boolean.class)
-            //     throw new Exception("Can't apply logical AND to a non-boolean");
+            if (upper != boolean.class || lower != boolean.class)
+                throw new CompilerException("Can't apply logical AND to a non-boolean");
             LabelNode stopLabel = new LabelNode();
             LabelNode falseLabel = new LabelNode();
             LabelNode falseLabel1 = new LabelNode();
@@ -208,8 +209,8 @@ public class PrimitiveOperations {
                 .label(stopLabel);
             classStack.push(boolean.class);
         } else if (op.equals("∨")) {
-            // if (upper != boolean.class || lower != boolean.class)
-            //     throw new Exception("Can't apply logical OR to a non-boolean");
+            if (upper != boolean.class || lower != boolean.class)
+                throw new CompilerException("Can't apply logical OR to a non-boolean");
             LabelNode stopLabel = new LabelNode();
             LabelNode trueLabel = new LabelNode();
             LabelNode trueLabel1 = new LabelNode();
@@ -278,7 +279,8 @@ public class PrimitiveOperations {
         classStack.push(boolean.class);
     }
 
-    public static void compilePrimitiveOperation(CodeBlock block, Stack<Class> classStack, TerminalNode operation) {
+    public static void compilePrimitiveOperation(CodeBlock block, Stack<Class> classStack, TerminalNode operation)
+        throws CompilerException {
         String op = operation.getSymbol().getText();
         if (op.equals("+") || op.equals("-") || op.equals("*") || op.equals("/")
             || op.equals("%"))

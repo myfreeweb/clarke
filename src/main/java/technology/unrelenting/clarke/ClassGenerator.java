@@ -27,7 +27,8 @@ public class ClassGenerator extends ClarkeBaseListener {
         methodSigCache = new HashMap<String, Map<String, Class[]>>();
     }
 
-    public List<JiteClass> generate() {
+    public List<JiteClass> generate()
+        throws CompilerException {
         for (String className : classesToCompile.keySet()) {
             jiteClass = new JiteClass(className);
             classNameSlashed = className.replace('.', '/');
@@ -89,14 +90,29 @@ public class ClassGenerator extends ClarkeBaseListener {
         }
     }
 
-    private void compileCachedMethodCall(CodeBlock block, String slashedClassName, String methodName, Class[] signature) {
+    private void compileCachedStaticMethodCall(CodeBlock block, String slashedClassName, String methodName, Class[] signature) {
         if (paramsMatchStack(ArrayUtils.subarray(signature, 1, signature.length + 1))) {
             block.invokestatic(slashedClassName, methodName, sig(signature));
             classStack.push(signature[0]);
         }
     }
 
-    private void compileMethodCall(CodeBlock block, ClarkeParser.QualifiedNameContext ctx) {
+    private void compileReflectedStaticMethodCall(CodeBlock block, Class klass, String methodName) {
+        for (Method method : klass.getMethods()) {
+            if (method.getName().equals(methodName) && (method.getModifiers() & Opcodes.ACC_STATIC) == Opcodes.ACC_STATIC) {
+                Class[] paramTypes = method.getParameterTypes();
+                if (paramsMatchStack(paramTypes)) {
+                    block.invokestatic(klass.getCanonicalName().replace('.', '/'), methodName,
+                            sig(ArrayUtils.add(paramTypes, 0, method.getReturnType())));
+                    classStack.push(method.getReturnType());
+                    break;
+                }
+            }
+        }
+    }
+
+    private void compileMethodCall(CodeBlock block, ClarkeParser.QualifiedNameContext ctx)
+        throws CompilerException {
         List<TerminalNode> qualifiedName = ctx.ID();
         String methodName = qualifiedName.get(qualifiedName.size() - 1).getText();
         String className;
@@ -107,23 +123,13 @@ public class ClassGenerator extends ClarkeBaseListener {
         if (methodSigCache.containsKey(className)) {
             Map<String, Class[]> methodsOfClass = methodSigCache.get(className);
             if (methodsOfClass.containsKey(methodName))
-                compileCachedMethodCall(block, className.replace('.', '/'), methodName, methodsOfClass.get(methodName));
+                compileCachedStaticMethodCall(block, className.replace('.', '/'), methodName, methodsOfClass.get(methodName));
         } else {
             try {
                 Class klass = ClassLoader.getSystemClassLoader().loadClass(className);
-                for (Method method : klass.getMethods()) {
-                    if (method.getName().equals(methodName)) { // TODO: check for static flag
-                        Class[] paramTypes = method.getParameterTypes();
-                        if (paramsMatchStack(paramTypes)) {
-                            block.invokestatic(className.replace('.', '/'), methodName,
-                                    sig(ArrayUtils.add(paramTypes, 0, method.getReturnType())));
-                            classStack.push(method.getReturnType());
-                            break;
-                        }
-                    }
-                }
+                compileReflectedStaticMethodCall(block, klass, methodName);
             } catch (ClassNotFoundException ex) {
-                ex.printStackTrace();
+                throw new CompilerException("Could not find class " + className + " on the classpath.", ex);
             }
         }
     }
@@ -195,7 +201,8 @@ public class ClassGenerator extends ClarkeBaseListener {
             block.areturn();
     }
 
-    private void compileMethod(ClarkeParser.MethodDefinitionContext ctx, Class[] signature) {
+    private void compileMethod(ClarkeParser.MethodDefinitionContext ctx, Class[] signature)
+        throws CompilerException {
         classStack = new Stack<Class>();
         for (Class argClass : ArrayUtils.subarray(signature, 0, signature.length))
             classStack.push(argClass);

@@ -9,7 +9,8 @@ import java.util.List;
 
 public class Compiler {
 
-    public List<JiteClass> compileClasses(String input) {
+    public List<JiteClass> compileClasses(String input)
+        throws CompilerException {
         ANTLRInputStream inputStream = new ANTLRInputStream(input);
         ClarkeLexer lexer = new ClarkeLexer(inputStream);
         TokenStream tokenStream = new CommonTokenStream(lexer);

@@ -19,18 +19,18 @@ public class CompilerTest {
         }
     }
 
-    private Class eval(String code) {
+    private Class eval(String code) throws CompilerException {
         return new DynamicClassLoader().define(compiler.compileClasses("class TestClass; " + code).get(0));
     }
 
-    private DynamicClassLoader evalClasses(String code) {
+    private DynamicClassLoader evalClasses(String code) throws CompilerException {
         DynamicClassLoader classLoader = new DynamicClassLoader();
         for (JiteClass jiteClass : compiler.compileClasses(code))
             classLoader.define(jiteClass);
         return classLoader;
     }
 
-    @Test public void testArithmetic() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    @Test public void testArithmetic() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("ar ∷ int → int = 2 * 1 -;");
         assertEquals(19, testClass.getMethod("ar", int.class).invoke(null, 10));
 
@@ -44,7 +44,7 @@ public class CompilerTest {
         assertEquals(-95L, testClass.getMethod("ar", long.class).invoke(null, 10L));
     }
 
-    @Test public void testBooleans() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    @Test public void testBooleans() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("bo ∷ bool → bool = ¬;");
         assertEquals(true, testClass.getMethod("bo", boolean.class).invoke(null, false));
 
@@ -73,7 +73,7 @@ public class CompilerTest {
         assertEquals(true, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
     }
 
-    @Test public void testStaticCalls() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    @Test public void testStaticCalls() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("testHello ∷ → java.lang.String = hello; hello ∷ → java.lang.String = \"Hello\";");
         assertEquals("Hello", testClass.getMethod("testHello").invoke(null));
 
@@ -82,7 +82,7 @@ public class CompilerTest {
         assertEquals(100, testClass.getMethod("readdec", String.class).invoke(null, "100"));
     }
 
-    @Test public void testMultipleClasses() throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    @Test public void testMultipleClasses() throws CompilerException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         DynamicClassLoader classLoader = evalClasses("class One; hello ∷ → java.lang.String = \"One\"; class Two; hello ∷ → java.lang.String = \"Two\";");
         assertEquals("One", classLoader.loadClass("One").getMethod("hello").invoke(null));
         assertEquals("Two", classLoader.loadClass("Two").getMethod("hello").invoke(null));
