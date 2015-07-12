@@ -1,11 +1,13 @@
 package technology.unrelenting.clarke;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import me.qmx.jitescript.CodeBlock;
 import me.qmx.jitescript.internal.org.objectweb.asm.Opcodes;
 import me.qmx.jitescript.JiteClass;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 import static me.qmx.jitescript.util.CodegenUtils.sig;
@@ -15,16 +17,29 @@ public class ClassGenerator extends ClarkeBaseListener {
     JiteClass jiteClass;
     Stack<Class> classStack;
     String classNameSlashed;
-    Map<String, Class[]> currentMethodSignatures;
-    final Map<String, Map<String, String>> methodSigCache;
+    final Map<String, Map<String, Class[]>> methodSigCache;
     final List<JiteClass> jiteClasses;
+    final Map<String, ClarkeParser.ClassDefinitionContext> classesToCompile;
 
     public ClassGenerator() {
         jiteClasses = new LinkedList<JiteClass>();
-        methodSigCache = new HashMap<String, Map<String, String>>();
+        classesToCompile = new HashMap<String, ClarkeParser.ClassDefinitionContext>();
+        methodSigCache = new HashMap<String, Map<String, Class[]>>();
     }
 
     public List<JiteClass> generate() {
+        for (String className : classesToCompile.keySet()) {
+            jiteClass = new JiteClass(className);
+            classNameSlashed = className.replace('.', '/');
+            for (ClarkeParser.MethodDefinitionContext methodCtx : classesToCompile.get(className).methodDefinition())
+                compileMethod(methodCtx, methodSigCache.get(className).get(methodCtx.qualifiedName().getText()));
+//        try {
+//            Files.write(Paths.get("TestClass.class"), jiteClass.toBytes());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+            jiteClasses.add(jiteClass);
+        }
         return jiteClasses;
     }
 
@@ -74,24 +89,61 @@ public class ClassGenerator extends ClarkeBaseListener {
         }
     }
 
+    private void compileCachedMethodCall(CodeBlock block, String slashedClassName, String methodName, Class[] signature) {
+        if (paramsMatchStack(ArrayUtils.subarray(signature, 1, signature.length + 1))) {
+            block.invokestatic(slashedClassName, methodName, sig(signature));
+            classStack.push(signature[0]);
+        }
+    }
+
     private void compileMethodCall(CodeBlock block, ClarkeParser.QualifiedNameContext ctx) {
-        // TODO: resolve static methods of other classes
         List<TerminalNode> qualifiedName = ctx.ID();
-        if (qualifiedName.size() == 1) {
-            String methodName = qualifiedName.get(0).getText();
-            if (currentMethodSignatures.containsKey(methodName)) {
-                block.invokestatic(classNameSlashed, methodName, sig(currentMethodSignatures.get(methodName)));
-            }
+        String methodName = qualifiedName.get(qualifiedName.size() - 1).getText();
+        String className;
+        if (qualifiedName.size() == 1)
+            className = jiteClass.getClassName();
+        else
+            className = StringUtils.join(qualifiedName.subList(0, qualifiedName.size() - 1), ".");
+        if (methodSigCache.containsKey(className)) {
+            Map<String, Class[]> methodsOfClass = methodSigCache.get(className);
+            if (methodsOfClass.containsKey(methodName))
+                compileCachedMethodCall(block, className.replace('.', '/'), methodName, methodsOfClass.get(methodName));
         } else {
-            String methodName = qualifiedName.get(qualifiedName.size() - 1).getText();
-            String className = StringUtils.join(qualifiedName.subList(0, qualifiedName.size() - 1), ".");
-            if (methodSigCache.containsKey(className)) {
-                Map<String, String> methodsOfClass = methodSigCache.get(className);
-                if (methodsOfClass.containsKey(methodName)) {
-                    block.invokestatic(className.replace('.', '/'), methodName, methodsOfClass.get(methodName));
+            try {
+                Class klass = ClassLoader.getSystemClassLoader().loadClass(className);
+                for (Method method : klass.getMethods()) {
+                    if (method.getName().equals(methodName)) { // TODO: check for static flag
+                        Class[] paramTypes = method.getParameterTypes();
+                        if (paramsMatchStack(paramTypes)) {
+                            block.invokestatic(className.replace('.', '/'), methodName,
+                                    sig(ArrayUtils.add(paramTypes, 0, method.getReturnType())));
+                            classStack.push(method.getReturnType());
+                            break;
+                        }
+                    }
                 }
+            } catch (ClassNotFoundException ex) {
+                ex.printStackTrace();
             }
         }
+    }
+
+    private boolean paramsMatchStack(Class[] paramTypes) {
+        if (paramTypes.length == 0)
+            return true;
+        if (classStack.size() < paramTypes.length)
+            return false;
+        List<Class> poppedClasses = new LinkedList<Class>();
+        for (int i = paramTypes.length - 1; i >= 0; i--) {
+            Class currentStackClass = classStack.pop();
+            poppedClasses.add(currentStackClass);
+            if (!paramTypes[i].equals(currentStackClass)) {
+                for (Class klass : poppedClasses)
+                    classStack.push(klass);
+                return false;
+            }
+        }
+        return true;
     }
 
     private Class[] buildSignature(ClarkeParser.MethodDefinitionContext ctx) {
@@ -105,7 +157,6 @@ public class ClassGenerator extends ClarkeBaseListener {
                 for (ClarkeParser.QualifiedNameContext typeName : ctx.typeSignature().argTypes().qualifiedName()) {
                     Class argClass = resolveType(typeName);
                     signature.add(argClass);
-                    classStack.push(argClass);
                 }
             }
         } else {
@@ -145,6 +196,9 @@ public class ClassGenerator extends ClarkeBaseListener {
     }
 
     private void compileMethod(ClarkeParser.MethodDefinitionContext ctx, Class[] signature) {
+        classStack = new Stack<Class>();
+        for (Class argClass : ArrayUtils.subarray(signature, 0, signature.length))
+            classStack.push(argClass);
         CodeBlock block = CodeBlock.newCodeBlock();
         compileArgumentsLoad(block, signature);
         for (ClarkeParser.ExprContext expr : ctx.expr()) {
@@ -163,24 +217,11 @@ public class ClassGenerator extends ClarkeBaseListener {
 
     @Override public void exitClassDefinition(ClarkeParser.ClassDefinitionContext ctx) {
         String name = ctx.qualifiedName().getText();
-        jiteClass = new JiteClass(name);
-        classStack = new Stack<Class>();
-        classNameSlashed = name.replace('.', '/');
-        currentMethodSignatures = new HashMap<String, Class[]>();
+        Map<String, Class[]> methodSignatures = new HashMap<String, Class[]>();
         for (ClarkeParser.MethodDefinitionContext methodCtx : ctx.methodDefinition())
-            currentMethodSignatures.put(methodCtx.qualifiedName().getText(), buildSignature(methodCtx));
-        for (ClarkeParser.MethodDefinitionContext methodCtx : ctx.methodDefinition())
-            compileMethod(methodCtx, currentMethodSignatures.get(methodCtx.qualifiedName().getText()));
-        Map<String, String> currentMethodSigs = new HashMap<String, String>();
-        for (String methodName : currentMethodSignatures.keySet())
-            currentMethodSigs.put(methodName, sig(currentMethodSignatures.get(methodName)));
-        methodSigCache.put(name, currentMethodSigs);
-//        try {
-//            Files.write(Paths.get("TestClass.class"), jiteClass.toBytes());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-        jiteClasses.add(jiteClass);
+            methodSignatures.put(methodCtx.qualifiedName().getText(), buildSignature(methodCtx));
+        methodSigCache.put(name, methodSignatures);
+        classesToCompile.put(name, ctx);
     }
 
 }

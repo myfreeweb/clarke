@@ -76,6 +76,10 @@ public class CompilerTest {
     @Test public void testStaticCalls() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("testHello ∷ → java.lang.String = hello; hello ∷ → java.lang.String = \"Hello\";");
         assertEquals("Hello", testClass.getMethod("testHello").invoke(null));
+
+        testClass = eval("readdec ∷ java.lang.String → int = java.lang.Integer.parseInt; readbin ∷ java.lang.String → int = \"2\" readdec java.lang.Integer.parseInt;");
+        assertEquals(4,   testClass.getMethod("readbin", String.class).invoke(null, "100"));
+        assertEquals(100, testClass.getMethod("readdec", String.class).invoke(null, "100"));
     }
 
     @Test public void testMultipleClasses() throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
@@ -84,6 +88,9 @@ public class CompilerTest {
         assertEquals("Two", classLoader.loadClass("Two").getMethod("hello").invoke(null));
 
         classLoader = evalClasses("class One; hello ∷ → java.lang.String = \"One\"; class Two; hello ∷ → java.lang.String = One.hello;");
+        assertEquals("One", classLoader.loadClass("Two").getMethod("hello").invoke(null));
+
+        classLoader = evalClasses("class Two; hello ∷ → java.lang.String = One.hello; class One; hello ∷ → java.lang.String = \"One\";");
         assertEquals("One", classLoader.loadClass("Two").getMethod("hello").invoke(null));
     }
 
