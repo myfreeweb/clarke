@@ -73,6 +73,20 @@ public class CompilerTest {
         assertEquals(true, testClass.getMethod("bo", boolean.class, boolean.class).invoke(null, false, true));
     }
 
+    @Test public void testControlFlow() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        Class testClass = eval("cf ∷ bool → int = { 2 3 + } { 2 3 * } if;");
+        assertEquals(6, testClass.getMethod("cf", boolean.class).invoke(null, true));
+        assertEquals(5, testClass.getMethod("cf", boolean.class).invoke(null, false));
+
+        testClass = eval("cf ∷ bool → int = 2 swap { 2 * } when;");
+        assertEquals(4, testClass.getMethod("cf", boolean.class).invoke(null, true));
+        assertEquals(2, testClass.getMethod("cf", boolean.class).invoke(null, false));
+
+        testClass = eval("cf ∷ bool → int = 2 swap { 2 * } unless;");
+        assertEquals(2, testClass.getMethod("cf", boolean.class).invoke(null, true));
+        assertEquals(4, testClass.getMethod("cf", boolean.class).invoke(null, false));
+    }
+
     @Test public void testStaticCalls() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("testHello ∷ → java.lang.String = hello; hello ∷ → java.lang.String = \"Hello\";");
         assertEquals("Hello", testClass.getMethod("testHello").invoke(null));

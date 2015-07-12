@@ -16,7 +16,18 @@ argTypes : qualifiedName*? ;
 
 returnType : qualifiedName ;
 
-expr : literal | qualifiedName | PrimitiveOperation ;
+expr : controlFlowExpr | PrimitiveOperation | literal | qualifiedName ;
+
+controlFlowExpr : ifExpr | whenExpr | unlessExpr ;
+
+ifExpr : groupExpr groupExpr 'if' ;
+
+whenExpr : groupExpr 'when' ;
+
+unlessExpr : groupExpr 'unless' ;
+
+groupExpr : '{' expr+ '}' ;
+
 
 PrimitiveOperation
     : '+' | '-' | '*' | '/' | '%'

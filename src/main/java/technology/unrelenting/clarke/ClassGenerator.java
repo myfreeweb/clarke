@@ -1,5 +1,6 @@
 package technology.unrelenting.clarke;
 
+import me.qmx.jitescript.internal.org.objectweb.asm.tree.LabelNode;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -87,6 +88,30 @@ public class ClassGenerator extends ClarkeBaseListener {
             String s = literal.StringLiteral().getText();
             block.ldc(s.substring(1, s.length() - 1));
             classStack.push(String.class);
+        }
+    }
+
+    private void compileControlFlow(CodeBlock block, ClarkeParser.ControlFlowExprContext ctx)
+        throws CompilerException {
+        LabelNode stopLabel = new LabelNode();
+        if (classStack.pop() != boolean.class)
+            throw new CompilerException("Can't use control flow on non-boolean objects.");
+        if (ctx.ifExpr() != null) {
+            LabelNode falseLabel = new LabelNode();
+            block.ifeq(falseLabel);
+            compileExprs(block, ctx.ifExpr().groupExpr(1).expr());
+            block.go_to(stopLabel)
+                .label(falseLabel);
+            compileExprs(block, ctx.ifExpr().groupExpr(0).expr());
+            block.label(stopLabel);
+        } else if (ctx.whenExpr() != null) {
+            block.ifeq(stopLabel);
+            compileExprs(block, ctx.whenExpr().groupExpr().expr());
+            block.label(stopLabel);
+        } else if (ctx.unlessExpr() != null) {
+            block.ifne(stopLabel);
+            compileExprs(block, ctx.unlessExpr().groupExpr().expr());
+            block.label(stopLabel);
         }
     }
 
@@ -186,6 +211,20 @@ public class ClassGenerator extends ClarkeBaseListener {
         }
     }
 
+    private void compileExprs(CodeBlock block, Collection<ClarkeParser.ExprContext> exprs)
+        throws CompilerException {
+        for (ClarkeParser.ExprContext expr : exprs) {
+            if (expr.literal() != null)
+                compilePushLiteral(block, expr.literal());
+            else if (expr.PrimitiveOperation() != null)
+                PrimitiveOperations.compilePrimitiveOperation(block, classStack, expr.PrimitiveOperation());
+            else if (expr.controlFlowExpr() != null)
+                compileControlFlow(block, expr.controlFlowExpr());
+            else if (expr.qualifiedName() != null)
+                compileMethodCall(block, expr.qualifiedName());
+        }
+    }
+
     private void compileReturn(CodeBlock block, Class returnType) {
         if (returnType == null)
             block.voidreturn();
@@ -208,14 +247,7 @@ public class ClassGenerator extends ClarkeBaseListener {
             classStack.push(argClass);
         CodeBlock block = CodeBlock.newCodeBlock();
         compileArgumentsLoad(block, signature);
-        for (ClarkeParser.ExprContext expr : ctx.expr()) {
-            if (expr.literal() != null)
-                compilePushLiteral(block, expr.literal());
-            else if (expr.PrimitiveOperation() != null)
-                PrimitiveOperations.compilePrimitiveOperation(block, classStack, expr.PrimitiveOperation());
-            else if (expr.qualifiedName() != null)
-                compileMethodCall(block, expr.qualifiedName());
-        }
+        compileExprs(block, ctx.expr());
         compileReturn(block, signature[0]);
         jiteClass.defineMethod(ctx.qualifiedName().getText(),
                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
