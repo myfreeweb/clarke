@@ -4,9 +4,11 @@ options {
     language = Java;
 }
 
-program : definition* EOF ;
+program : classDefinition* EOF ;
 
-definition : qualifiedName ( '∷' typeSignature )? '=' expr+ ';' ;
+classDefinition : 'class' qualifiedName ';' methodDefinition+ ;
+
+methodDefinition : qualifiedName ( '∷' typeSignature )? '=' expr+ ';' ;
 
 typeSignature : argTypes ( '→' returnType )? ;
 

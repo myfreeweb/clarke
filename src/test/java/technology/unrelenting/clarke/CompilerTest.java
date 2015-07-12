@@ -3,6 +3,8 @@ package technology.unrelenting.clarke;
 import me.qmx.jitescript.JiteClass;
 import org.junit.Test;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
+
 import static me.qmx.jitescript.util.CodegenUtils.c;
 import static org.junit.Assert.assertEquals;
 
@@ -18,7 +20,14 @@ public class CompilerTest {
     }
 
     private Class eval(String code) {
-        return new DynamicClassLoader().define(compiler.compileClass("TestClass", code));
+        return new DynamicClassLoader().define(compiler.compileClasses("class TestClass; " + code).get(0));
+    }
+
+    private DynamicClassLoader evalClasses(String code) {
+        DynamicClassLoader classLoader = new DynamicClassLoader();
+        for (JiteClass jiteClass : compiler.compileClasses(code))
+            classLoader.define(jiteClass);
+        return classLoader;
     }
 
     @Test public void testArithmetic() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
@@ -67,6 +76,15 @@ public class CompilerTest {
     @Test public void testStaticCalls() throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("testHello ∷ → java.lang.String = hello; hello ∷ → java.lang.String = \"Hello\";");
         assertEquals("Hello", testClass.getMethod("testHello").invoke(null));
+    }
+
+    @Test public void testMultipleClasses() throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        DynamicClassLoader classLoader = evalClasses("class One; hello ∷ → java.lang.String = \"One\"; class Two; hello ∷ → java.lang.String = \"Two\";");
+        assertEquals("One", classLoader.loadClass("One").getMethod("hello").invoke(null));
+        assertEquals("Two", classLoader.loadClass("Two").getMethod("hello").invoke(null));
+
+        classLoader = evalClasses("class One; hello ∷ → java.lang.String = \"One\"; class Two; hello ∷ → java.lang.String = One.hello;");
+        assertEquals("One", classLoader.loadClass("Two").getMethod("hello").invoke(null));
     }
 
 }

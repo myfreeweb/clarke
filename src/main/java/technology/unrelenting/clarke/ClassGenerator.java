@@ -1,5 +1,6 @@
 package technology.unrelenting.clarke;
 
+import org.apache.commons.lang3.StringUtils;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import me.qmx.jitescript.CodeBlock;
 import me.qmx.jitescript.internal.org.objectweb.asm.Opcodes;
@@ -11,37 +12,20 @@ import static me.qmx.jitescript.util.CodegenUtils.sig;
 
 public class ClassGenerator extends ClarkeBaseListener {
 
-    private final class MethodDefinition {
-        final ClarkeParser.DefinitionContext ctx;
-        final Class[] signature;
+    JiteClass jiteClass;
+    Stack<Class> classStack;
+    String classNameSlashed;
+    Map<String, Class[]> currentMethodSignatures;
+    final Map<String, Map<String, String>> methodSigCache;
+    final List<JiteClass> jiteClasses;
 
-        public MethodDefinition(ClarkeParser.DefinitionContext ctx, Class[] signature) {
-            this.ctx = ctx;
-            this.signature = signature;
-        }
+    public ClassGenerator() {
+        jiteClasses = new LinkedList<JiteClass>();
+        methodSigCache = new HashMap<String, Map<String, String>>();
     }
 
-    final JiteClass jiteClass;
-    final Stack<Class> classStack;
-    final String classNameSlashed;
-    final Map<String, MethodDefinition> methodDefinitions;
-
-    public ClassGenerator(String name) {
-        this.jiteClass = new JiteClass(name);
-        this.classStack = new Stack<Class>();
-        this.classNameSlashed = name.replace('.', '/');
-        this.methodDefinitions = new HashMap<String, MethodDefinition>();
-    }
-
-    public JiteClass generate() {
-        for (MethodDefinition definition : methodDefinitions.values())
-            compileMethod(definition);
-//        try {
-//            Files.write(Paths.get("TestClass.class"), this.jiteClass.toBytes());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-        return this.jiteClass;
+    public List<JiteClass> generate() {
+        return jiteClasses;
     }
 
     private Class resolveType(ClarkeParser.QualifiedNameContext typeID) {
@@ -90,16 +74,27 @@ public class ClassGenerator extends ClarkeBaseListener {
         }
     }
 
-    private void compileMethodCall(CodeBlock block, ClarkeParser.QualifiedNameContext methodName) {
+    private void compileMethodCall(CodeBlock block, ClarkeParser.QualifiedNameContext ctx) {
         // TODO: resolve static methods of other classes
-        String name = methodName.getText();
-        if (methodDefinitions.containsKey(name)) {
-            MethodDefinition definition = methodDefinitions.get(name);
-            block.invokestatic(this.classNameSlashed, name, sig(definition.signature));
+        List<TerminalNode> qualifiedName = ctx.ID();
+        if (qualifiedName.size() == 1) {
+            String methodName = qualifiedName.get(0).getText();
+            if (currentMethodSignatures.containsKey(methodName)) {
+                block.invokestatic(this.classNameSlashed, methodName, sig(currentMethodSignatures.get(methodName)));
+            }
+        } else {
+            String methodName = qualifiedName.get(qualifiedName.size() - 1).getText();
+            String className = StringUtils.join(qualifiedName.subList(0, qualifiedName.size() - 1), ".");
+            if (methodSigCache.containsKey(className)) {
+                Map<String, String> methodsOfClass = methodSigCache.get(className);
+                if (methodsOfClass.containsKey(methodName)) {
+                    block.invokestatic(className.replace('.', '/'), methodName, methodsOfClass.get(methodName));
+                }
+            }
         }
     }
 
-    private Class[] buildSignature(ClarkeParser.DefinitionContext ctx) {
+    private Class[] buildSignature(ClarkeParser.MethodDefinitionContext ctx) {
         List<Class> signature = new ArrayList<Class>();
         if (ctx.typeSignature() != null) {
             if (ctx.typeSignature().returnType() != null)
@@ -149,13 +144,7 @@ public class ClassGenerator extends ClarkeBaseListener {
             block.areturn();
     }
 
-    @Override public void exitDefinition(ClarkeParser.DefinitionContext ctx) {
-        methodDefinitions.put(ctx.qualifiedName().getText(), new MethodDefinition(ctx, buildSignature(ctx)));
-    }
-
-    private void compileMethod(MethodDefinition definition) {
-        ClarkeParser.DefinitionContext ctx = definition.ctx;
-        Class[] signature = definition.signature;
+    private void compileMethod(ClarkeParser.MethodDefinitionContext ctx, Class[] signature) {
         CodeBlock block = CodeBlock.newCodeBlock();
         compileArgumentsLoad(block, signature);
         for (ClarkeParser.ExprContext expr : ctx.expr()) {
@@ -170,6 +159,28 @@ public class ClassGenerator extends ClarkeBaseListener {
         this.jiteClass.defineMethod(ctx.qualifiedName().getText(),
                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                 sig(signature), block);
+    }
+
+    @Override public void exitClassDefinition(ClarkeParser.ClassDefinitionContext ctx) {
+        String name = ctx.qualifiedName().getText();
+        jiteClass = new JiteClass(name);
+        classStack = new Stack<Class>();
+        classNameSlashed = name.replace('.', '/');
+        currentMethodSignatures = new HashMap<String, Class[]>();
+        for (ClarkeParser.MethodDefinitionContext methodCtx : ctx.methodDefinition())
+            currentMethodSignatures.put(methodCtx.qualifiedName().getText(), buildSignature(methodCtx));
+        for (ClarkeParser.MethodDefinitionContext methodCtx : ctx.methodDefinition())
+            compileMethod(methodCtx, currentMethodSignatures.get(methodCtx.qualifiedName().getText()));
+        Map<String, String> currentMethodSigs = new HashMap<String, String>();
+        for (String methodName : currentMethodSignatures.keySet())
+            currentMethodSigs.put(methodName, sig(currentMethodSignatures.get(methodName)));
+        methodSigCache.put(name, currentMethodSigs);
+//        try {
+//            Files.write(Paths.get("TestClass.class"), this.jiteClass.toBytes());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        jiteClasses.add(jiteClass);
     }
 
 }
