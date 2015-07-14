@@ -17,6 +17,7 @@ public class ClassGenerator extends ClarkeBaseListener {
 
     JiteClass jiteClass;
     Stack<Class> classStack;
+    Map<Integer, Class> varTypeMap;
     String classNameSlashed;
     final Map<String, Map<String, Class[]>> methodSigCache;
     final List<JiteClass> jiteClasses;
@@ -247,7 +248,7 @@ public class ClassGenerator extends ClarkeBaseListener {
             if (expr.literal() != null)
                 compilePushLiteral(block, expr.literal());
             else if (expr.PrimitiveOperation() != null)
-                PrimitiveOperations.compilePrimitiveOperation(block, classStack, expr.PrimitiveOperation());
+                PrimitiveOperations.compilePrimitiveOperation(block, classStack, varTypeMap, expr.PrimitiveOperation());
             else if (expr.controlFlowExpr() != null)
                 compileControlFlow(block, expr.controlFlowExpr());
             else if (expr.loopExpr() != null)
@@ -275,6 +276,7 @@ public class ClassGenerator extends ClarkeBaseListener {
     private void compileMethod(ClarkeParser.MethodDefinitionContext ctx, Class[] signature)
         throws CompilerException {
         classStack = new Stack<Class>();
+        varTypeMap = new HashMap<Integer, Class>();
         for (Class argClass : ArrayUtils.subarray(signature, 0, signature.length))
             classStack.push(argClass);
         CodeBlock block = CodeBlock.newCodeBlock();

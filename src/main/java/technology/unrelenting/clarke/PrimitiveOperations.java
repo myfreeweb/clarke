@@ -4,6 +4,7 @@ import me.qmx.jitescript.CodeBlock;
 import me.qmx.jitescript.internal.org.objectweb.asm.tree.LabelNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.Map;
 import java.util.Stack;
 
 public class PrimitiveOperations {
@@ -55,6 +56,43 @@ public class PrimitiveOperations {
             block.pop2();
         else
             block.pop();
+    }
+
+    public static void compileStore(CodeBlock block, Stack<Class> classStack, Map<Integer, Class> varTypeMap, int varNumber) {
+        Class upper = classStack.pop();
+        varTypeMap.put(varNumber, upper);
+        if (upper == int.class)
+            block.istore(varNumber);
+        else if (upper == long.class)
+            block.lstore(varNumber);
+        else if (upper == float.class)
+            block.fstore(varNumber);
+        else if (upper == double.class)
+            block.dstore(varNumber);
+        else
+            block.astore(varNumber);
+    }
+
+    public static void compileLoad(CodeBlock block, Stack<Class> classStack, Map<Integer, Class> varTypeMap, int varNumber) {
+        Class varClass = varTypeMap.get(varNumber);
+        if (varClass == int.class)
+            block.iload(varNumber);
+        else if (varClass == long.class)
+            block.lload(varNumber);
+        else if (varClass == float.class)
+            block.fload(varNumber);
+        else if (varClass == double.class)
+            block.dload(varNumber);
+        else
+            block.aload(varNumber);
+        classStack.push(varClass);
+    }
+
+    public static void compileOver(CodeBlock block, Stack<Class> classStack, Map<Integer, Class> varTypeMap) {
+        compileStore(block, classStack, varTypeMap, 0); // a b -- a
+        compileDup(block, classStack); // a -- a a
+        compileLoad(block, classStack, varTypeMap, 0); // a a -- a a b
+        compileSwap(block, classStack); // a a b -- a b a
     }
 
     public static void compilePrintln(CodeBlock block, Stack<Class> classStack) {
@@ -287,7 +325,7 @@ public class PrimitiveOperations {
         classStack.push(boolean.class);
     }
 
-    public static void compilePrimitiveOperation(CodeBlock block, Stack<Class> classStack, TerminalNode operation)
+    public static void compilePrimitiveOperation(CodeBlock block, Stack<Class> classStack, Map<Integer, Class> varTypeMap, TerminalNode operation)
         throws CompilerException {
         String op = operation.getSymbol().getText();
         if (op.equals("+") || op.equals("-") || op.equals("*") || op.equals("/")
@@ -303,6 +341,8 @@ public class PrimitiveOperations {
             compileSwap(block, classStack);
         else if (op.equals("pop"))
             compilePop(block, classStack);
+        else if (op.equals("over"))
+            compileOver(block, classStack, varTypeMap);
         else if (op.equals("println"))
             compilePrintln(block, classStack);
     }

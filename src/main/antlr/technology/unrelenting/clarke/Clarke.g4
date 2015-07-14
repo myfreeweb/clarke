@@ -40,7 +40,7 @@ groupExpr : '{' expr+ '}' ;
 PrimitiveOperation
     : '+' | '-' | '*' | '/' | '%'
     | '¬' | '∧' | '∨' | '==' | '≠' | '<' | '>' | '≤' | '≥'
-    | 'dup' | 'swap' | 'pop' | 'println' ;
+    | 'dup' | 'swap' | 'pop' | 'over' | 'println' ;
 
 
 literal : BooleanLiteral | IntLiteral | LongLiteral | FloatLiteral | DoubleLiteral | StringLiteral ;

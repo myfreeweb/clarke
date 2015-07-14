@@ -88,6 +88,10 @@ public class CompilerTest {
     @Test public void testLoops() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Class testClass = eval("lp ∷ → int = 90 { 1 + } { dup 100 < } while;");
         assertEquals(100, testClass.getMethod("lp").invoke(null));
+
+        testClass = eval("gcd ∷ int int → int = { swap over % } { dup 0 ≠ } while pop;");
+        assertEquals(1, testClass.getMethod("gcd", int.class, int.class).invoke(null, 10, 21));
+        assertEquals(2, testClass.getMethod("gcd", int.class, int.class).invoke(null, 6, 10));
     }
 
     @Test public void testVoid() throws CompilerException, NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
