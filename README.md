@@ -1,6 +1,16 @@
 # Clarke
 
-A simple statically typed [concatenative] programming language for the JVM.
+A simple, statically typed [concatenative] programming language for the JVM.
+
+The compiler is implemented in under 1000 lines of Java, which makes it perfect for learning about JVM bytecode.
+
+The language currently supports:
+
+- generating classes with static methods
+- calling static methods
+- literals for Java primitive types and Strings
+- some built-in operations (stack manipulation, boolean logic, arithmetic)
+- conditionals and loops
 
 [concatenative]: http://concatenative.org/wiki/view/Concatenative%20language
 
@@ -16,6 +26,7 @@ $ ./gradlew shadowJar
 
 $ java -jar build/libs/clarke-1.0-SNAPSHOT-all.jar example.clarke
 $ java Hello
+$ javap -c Hello
 ```
 
 ## Syntax
@@ -36,7 +47,7 @@ class Hello;
 // - method calls
 //
 // Built-in operators:
-//    + -  *  /  %
+//    +  -  *  /  %
 //    ¬  ∧  ∨  ==  ≠  <  >  ≤  ≥
 //    dup  swap  pop  over  println
 
@@ -70,3 +81,7 @@ main ∷ java.lang.String[] = 20 5 MathStuff.gcd println;
 class MathStuff;
 gcd ∷ int int → int = { swap over % } { dup 0 ≠ } while pop;
 ```
+
+## The Name
+
+Well, there was [a concatenative language called Raven](http://aerosuidae.net/raven.html) which obviously must be named after [this Raven](http://the100.wikia.com/wiki/Raven_Reyes) so where's [Clarke](http://the100.wikia.com/wiki/Clarke_Griffin)? *(warning: spoliers for The 100 on both links!)*
