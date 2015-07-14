@@ -1,3 +1,0 @@
-class Hello;
-
-main ∷ java.lang.String[] = 2 2 * println;
